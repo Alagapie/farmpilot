@@ -43,6 +43,15 @@ await page.getByText("Reading your farm and writing").waitFor({ state: "detached
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${out}/4-report.png`, fullPage: true });
 
+// Lab results should replace the satellite estimates.
+await page.getByRole("button", { name: "Enter lab results" }).click();
+await page.getByPlaceholder("e.g. 5.8").fill("6.3");
+await page.getByPlaceholder("e.g. 0.9").fill("1.2");
+await page.getByRole("button", { name: "Use my lab results" }).click();
+await page.getByText("Reading your farm and writing").waitFor({ state: "detached", timeout: 90_000 });
+await page.waitForTimeout(500);
+await page.screenshot({ path: `${out}/6-lab.png`, fullPage: true });
+
 await page.setViewportSize({ width: 390, height: 844 });
 await page.screenshot({ path: `${out}/5-report-mobile.png`, fullPage: true });
 await browser.close();

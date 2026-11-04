@@ -1,4 +1,4 @@
-import type { Climate, FarmData, ForecastDay, Place, Soil } from "./types";
+import type { Climate, Confidence, FarmData, ForecastDay, Place, Soil, SoilValue } from "./types";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -10,40 +10,65 @@ async function getJson<T>(url: string, timeoutMs = 25_000): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function textureClass(sand: number, clay: number): string {
-  if (clay >= 40) return "clay";
-  if (clay >= 27) return sand > 45 ? "sandy clay loam" : "clay loam";
-  if (sand >= 85) return "sand";
-  if (sand >= 70) return "loamy sand";
-  if (sand >= 52) return "sandy loam";
-  return "loam";
+/** USDA soil texture triangle. */
+export function textureClass(sand: number, clay: number): string {
+  const silt = 100 - sand - clay;
+  if (silt + 1.5 * clay < 15) return "sand";
+  if (silt + 2 * clay < 30) return "loamy sand";
+  if ((clay >= 7 && clay < 20 && sand > 52) || (clay < 7 && silt < 50)) return "sandy loam";
+  if (clay >= 7 && clay < 27 && silt >= 28 && silt < 50 && sand <= 52) return "loam";
+  if ((silt >= 50 && clay >= 12 && clay < 27) || (silt >= 50 && silt < 80 && clay < 12)) return "silt loam";
+  if (silt >= 80 && clay < 12) return "silt";
+  if (clay >= 20 && clay < 35 && silt < 28 && sand > 45) return "sandy clay loam";
+  if (clay >= 27 && clay < 40 && sand > 20 && sand <= 45) return "clay loam";
+  if (clay >= 27 && clay < 40 && sand <= 20) return "silty clay loam";
+  if (clay >= 35 && sand > 45) return "sandy clay";
+  if (clay >= 40 && silt >= 40) return "silty clay";
+  return "clay";
+}
+
+/**
+ * Confidence from the width of SoilGrids' 90% prediction interval relative to
+ * the estimate (pH uses absolute width, since its scale is logarithmic).
+ */
+function confidenceOf(name: string, value: number, low: number, high: number): Confidence {
+  const width = name === "phh2o" ? (high - low) / 2.5 : (high - low) / Math.max(value, 1e-6);
+  if (width < 0.6) return "high";
+  if (width < 1.5) return "moderate";
+  return "low";
 }
 
 interface SoilGridsLayer {
   name: string;
   unit_measure: { d_factor: number };
-  depths: { range: { top_depth: number; bottom_depth: number }; values: { mean: number | null } }[];
+  depths: { range: { top_depth: number; bottom_depth: number }; values: Record<"mean" | "Q0.05" | "Q0.95", number | null> }[];
 }
 
 export async function getSoil(lat: number, lon: number): Promise<Soil> {
   const props = ["phh2o", "soc", "nitrogen", "clay", "sand", "cec"].map((p) => `property=${p}`).join("&");
   const depths = ["0-5cm", "5-15cm", "15-30cm"].map((d) => `depth=${d}`).join("&");
   const json = await getJson<{ properties: { layers: SoilGridsLayer[] } }>(
-    `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${lon}&lat=${lat}&${props}&${depths}&value=mean`,
+    `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${lon}&lat=${lat}&${props}&${depths}&value=mean&value=Q0.05&value=Q0.95`,
   );
-  // Thickness-weighted mean over the 0-30cm topsoil, converted to conventional units.
-  const value = (name: string): number | null => {
+  // Thickness-weighted over the 0-30cm topsoil, converted to conventional units.
+  const value = (name: string): SoilValue | null => {
     const layer = json.properties.layers.find((l) => l.name === name);
     if (!layer) return null;
-    let sum = 0;
+    const sums = { mean: 0, low: 0, high: 0 };
     let weight = 0;
     for (const d of layer.depths) {
-      if (d.values.mean == null) continue;
+      const { mean, "Q0.05": q05, "Q0.95": q95 } = d.values;
+      if (mean == null || q05 == null || q95 == null) continue;
       const w = d.range.bottom_depth - d.range.top_depth;
-      sum += (d.values.mean / layer.unit_measure.d_factor) * w;
+      sums.mean += mean * w;
+      sums.low += q05 * w;
+      sums.high += q95 * w;
       weight += w;
     }
-    return weight ? Math.round((sum / weight) * 100) / 100 : null;
+    if (!weight) return null;
+    const scale = (v: number) => Math.round((v / weight / layer.unit_measure.d_factor) * 100) / 100;
+    const [v, low, high] = [scale(sums.mean), scale(sums.low), scale(sums.high)];
+    return { value: v, low, high, confidence: confidenceOf(name, v, low, high), source: "satellite" };
   };
   const sand = value("sand");
   const clay = value("clay");
@@ -54,12 +79,12 @@ export async function getSoil(lat: number, lon: number): Promise<Soil> {
     clay,
     sand,
     cec: value("cec"),
-    texture: sand != null && clay != null ? textureClass(sand, clay) : "unknown",
+    texture: sand && clay ? textureClass(sand.value, clay.value) : "unknown",
   };
 }
 
 export async function getClimate(lat: number, lon: number): Promise<Climate> {
-  const json = await getJson<{ properties: { parameter: Record<string, Record<string, number>> } }>(
+  const json = await getJson<{ header: { range?: string }; properties: { parameter: Record<string, Record<string, number>> } }>(
     `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`,
   );
   const p = json.properties.parameter;
@@ -70,7 +95,9 @@ export async function getClimate(lat: number, lon: number): Promise<Climate> {
     tMin: p.T2M_MIN[m],
   }));
   const rainyMonths = months.filter((m) => m.rainMm >= 75).map((m) => m.month);
+  const years = json.header.range?.match(/(\d{4})\D+(\d{4})/);
   return {
+    period: years ? `${years[1]}–${years[2]}` : "recent decades",
     annualRainMm: months.reduce((s, m) => s + m.rainMm, 0),
     months,
     rainyMonths,
@@ -142,19 +169,28 @@ async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Pr
   return hit ? (hit.value as T) : null;
 }
 
+/** Forecast plus when it was actually fetched (it may come from a short cache). */
+export function getLiveForecast(lat: number, lon: number) {
+  return cached(`forecast:${lat.toFixed(3)},${lon.toFixed(3)}`, 30 * 60_000, async () => ({
+    days: await getForecast(lat, lon),
+    fetchedAt: new Date().toISOString(),
+  }));
+}
+
 export async function getFarmData(lat: number, lon: number): Promise<FarmData> {
   const at = `${lat.toFixed(3)},${lon.toFixed(3)}`;
   const [place, soil, climate, forecast] = await Promise.all([
     cached(`place:${at}`, 24 * HOUR, () => reverseGeocode(lat, lon)),
     cached(`soil:${at}`, 24 * HOUR, () => getSoil(lat, lon)),
     cached(`climate:${at}`, 24 * HOUR, () => getClimate(lat, lon)),
-    cached(`forecast:${at}`, HOUR, () => getForecast(lat, lon)),
+    getLiveForecast(lat, lon),
   ]);
   return {
     place: place ?? { village: null, lga: null, state: null, country: null, label: `${lat.toFixed(3)}, ${lon.toFixed(3)}` },
     zone: climate ? agroZone(climate.annualRainMm, lat) : "Unknown",
     soil,
     climate,
-    forecast: forecast ?? [],
+    forecast: forecast?.days ?? [],
+    forecastFetchedAt: forecast?.fetchedAt ?? null,
   };
 }

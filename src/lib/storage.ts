@@ -1,6 +1,6 @@
 import type { Farm } from "./types";
 
-const KEY = "farmpilot.farm.v1";
+const KEY = "farmpilot.farm.v2"; // v2: soil values carry ranges and confidence
 
 export function loadFarm(): Farm | null {
   try {

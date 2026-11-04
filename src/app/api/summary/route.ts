@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { meta, MODELS } from "@/lib/meta";
-import { plainForecast, plainRain, plainSoil } from "@/lib/plain";
+import { effectiveSoil, plainForecast, plainRain, plainSoil } from "@/lib/plain";
 import type { Farm } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -28,7 +28,8 @@ const SCHEMA = {
 
 export async function POST(req: Request) {
   const farm: Farm = await req.json();
-  const { place, zone, soil, climate, forecast } = farm.data;
+  const { place, zone, climate, forecast } = farm.data;
+  const soil = effectiveSoil(farm.data.soil, farm.labSoil);
 
   const facts = {
     location: place.label,
@@ -39,7 +40,9 @@ export async function POST(req: Request) {
     goal: farm.goal,
     cropsConsidered: farm.interests,
     today: new Date().toISOString().slice(0, 10),
-    soil: soil ? plainSoil(soil).map(({ title, meaning, action }) => ({ title, meaning, action })) : "unknown",
+    soil: soil
+      ? plainSoil(soil).map(({ title, action, rating, confidence }) => ({ title, action, rating, confidence }))
+      : "unknown",
     rain: climate ? plainRain(climate) : "unknown",
     next16Days: forecast.length ? plainForecast(forecast) : "unknown",
   };
@@ -58,6 +61,7 @@ Rules:
 - No technical words: never say pH, CEC, organic carbon, millimetres or hectares. Say "sour soil", "plant food", "manure", "rain".
 - Use only the facts given. Do not invent numbers, prices or crop yields.
 - Do not recommend which crop to plant; the season plan does that next.
+- Soil facts marked confidence "low" or "moderate" are satellite estimates, not lab tests. Do not state them as certain; if the lime decision is uncertain, suggest a soil test.
 - Mention what time of year it is now relative to the rainy season and what the farmer should be doing now.
 - headline: one sentence of at most 14 words.
 - points: exactly 4 points, each at most 22 words. Use kind "good" for strengths, "warning" for problems, "tip" for actions, "weather" for weather.`,

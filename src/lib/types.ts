@@ -1,11 +1,30 @@
+export type Confidence = "high" | "moderate" | "low";
+
+/** One soil property: best estimate plus its 90% prediction range. */
+export interface SoilValue {
+  value: number;
+  low: number;
+  high: number;
+  confidence: Confidence;
+  source: "satellite" | "lab";
+}
+
 export interface Soil {
-  ph: number | null;
-  organicCarbon: number | null; // g/kg
-  nitrogen: number | null; // g/kg
-  clay: number | null; // %
-  sand: number | null; // %
-  cec: number | null; // cmol(c)/kg
+  ph: SoilValue | null;
+  organicCarbon: SoilValue | null; // g/kg
+  nitrogen: SoilValue | null; // g/kg
+  clay: SoilValue | null; // %
+  sand: SoilValue | null; // %
+  cec: SoilValue | null; // cmol(c)/kg
   texture: string;
+}
+
+/** Results a farmer copies from a laboratory soil test report. */
+export interface LabSoil {
+  ph?: number;
+  organicCarbonPct?: number; // % (lab reports use percent; 1% = 10 g/kg)
+  nitrogenPct?: number; // %
+  testedOn?: string;
 }
 
 export interface MonthClimate {
@@ -19,6 +38,7 @@ export interface Climate {
   annualRainMm: number;
   months: MonthClimate[];
   rainyMonths: string[]; // months with >= 75mm on average
+  period: string; // years the averages cover, e.g. "2001–2025"
   onsetMonth: string | null;
   cessationMonth: string | null;
 }
@@ -46,6 +66,7 @@ export interface FarmData {
   soil: Soil | null;
   climate: Climate | null;
   forecast: ForecastDay[];
+  forecastFetchedAt: string | null;
 }
 
 export interface FarmSummary {
@@ -68,4 +89,5 @@ export interface Farm {
   interests: string[];
   data: FarmData;
   summary?: FarmSummary;
+  labSoil?: LabSoil;
 }
