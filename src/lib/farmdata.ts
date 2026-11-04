@@ -85,14 +85,16 @@ export async function getSoil(lat: number, lon: number): Promise<Soil> {
 
 export async function getClimate(lat: number, lon: number): Promise<Climate> {
   const json = await getJson<{ header: { range?: string }; properties: { parameter: Record<string, Record<string, number>> } }>(
-    `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`,
+    `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=PRECTOTCORR,T2M,T2M_RANGE&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`,
   );
   const p = json.properties.parameter;
+  // T2M_MAX/T2M_MIN in this climatology are monthly extremes, so typical daily
+  // highs and lows come from the mean temperature and the mean daily range.
   const months = MONTHS.map((m, i) => ({
     month: m[0] + m.slice(1).toLowerCase(),
     rainMm: Math.round(p.PRECTOTCORR[m] * DAYS[i]),
-    tMax: p.T2M_MAX[m],
-    tMin: p.T2M_MIN[m],
+    tMax: Math.round((p.T2M[m] + p.T2M_RANGE[m] / 2) * 10) / 10,
+    tMin: Math.round((p.T2M[m] - p.T2M_RANGE[m] / 2) * 10) / 10,
   }));
   const rainyMonths = months.filter((m) => m.rainMm >= 75).map((m) => m.month);
   const years = json.header.range?.match(/(\d{4})\D+(\d{4})/);

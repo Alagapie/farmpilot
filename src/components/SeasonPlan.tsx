@@ -520,7 +520,7 @@ function PricesUsed({ result, onReplan, busy }: { result: PlanResult; onReplan: 
 // ---------------------------------------------------------------- main
 
 /** Plans saved before the validator existed lack its fields; they must be rebuilt. */
-const isCurrentPlan = (p: Farm["plan"]): p is PlanResult => !!p && Array.isArray((p as PlanResult).details) && Array.isArray((p as PlanResult).checks);
+export const isCurrentPlan = (p: Farm["plan"]): p is PlanResult => !!p && Array.isArray((p as PlanResult).details) && Array.isArray((p as PlanResult).checks);
 
 export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (f: Farm) => void }) {
   const result = isCurrentPlan(farm.plan) ? farm.plan : undefined;
