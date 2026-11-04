@@ -47,7 +47,7 @@ export default function LocateStep({ onConfirm }: { onConfirm: (farm: LocatedFar
   const samHa = picked.reduce((s, f) => s + f.hectares, 0);
   const walkHa = polygonHectares(walkPoints);
 
-  const fly = (lat: number, lon: number, zoom = 18) => setFlyTo({ lat, lon, zoom, key: Date.now() });
+  const fly = (lat: number, lon: number, zoom = 17) => setFlyTo({ lat, lon, zoom, key: Date.now() });
 
   // Live GPS while walking the farm boundary.
   useEffect(() => {
@@ -96,7 +96,7 @@ export default function LocateStep({ onConfirm }: { onConfirm: (farm: LocatedFar
 
   function arriveAt(pos: UserPos, note: string | null) {
     setUserPos(pos);
-    fly(pos.lat, pos.lon, 18);
+    fly(pos.lat, pos.lon, 17); // z17 shows the whole patchwork of fields SAM found
     setMsg(note);
     // Give the map a moment to fly before the scan overlay appears.
     setTimeout(() => scan(pos.lat, pos.lon), 600);

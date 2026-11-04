@@ -59,7 +59,7 @@ export default function FieldMap({ fields, selected, userPos, walkPoints, flyTo,
   const pickedIds = fields.filter((f) => selected.has(f.id)).map((f) => f.id);
 
   return (
-    <MapContainer center={[9.08, 8.68]} zoom={6} className="h-full w-full" zoomControl={false}>
+    <MapContainer center={[9.08, 8.68]} zoom={6} className="h-full w-full">
       <TileLayer
         url={`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`}
         attribution="Imagery &copy; Esri, Maxar, Earthstar Geographics"

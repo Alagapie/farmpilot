@@ -61,7 +61,7 @@ export default function Onboarding({ onDone }: { onDone: (farm: Farm) => void })
     const stages = [
       "Locating your farm and agro-ecological zone",
       "Reading your soil from SoilGrids (0–30cm)",
-      "Analysing 20 years of NASA rainfall & temperature",
+      "Analysing 25 years of NASA rainfall & temperature",
       "Pulling your 16-day weather forecast",
     ];
     return (
