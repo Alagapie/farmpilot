@@ -2,11 +2,28 @@
   "name": "farmpilot",
   "version": "0.1.0",
   "private": true,
+  "description": "AI farming co-pilot: maps your land, plans your season, warns you before the weather hurts you, and tells you when to sell.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alagapie/farmpilot.git"
+  },
+  "author": "Abdulbasit Suleiman",
+  "keywords": [
+    "agriculture",
+    "nextjs",
+    "ai-agent",
+    "nigeria",
+    "farm-planning"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@meta-sam/parser": "^0.1.0",
