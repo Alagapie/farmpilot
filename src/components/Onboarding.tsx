@@ -6,7 +6,7 @@ import LocateStep, { type LocatedFarm } from "./LocateStep";
 import { toAcres } from "@/lib/geo";
 import type { Farm, FarmData } from "@/lib/types";
 
-const CROPS = ["Maize", "Rice", "Soybean", "Cassava", "Tomato"];
+const CROPS = ["Maize", "Rice", "Soybean", "Sorghum", "Cassava", "Tomato"];
 const BUDGETS = [150_000, 300_000, 600_000, 1_000_000, 2_000_000];
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;

@@ -93,7 +93,7 @@ const fetchedLabel = (iso: string) => {
   return sameDay ? `today ${time}` : `${d.toLocaleDateString("en-NG", { day: "numeric", month: "short" })} ${time}`;
 };
 
-export default function FarmReport({ farm, onUpdate }: { farm: Farm; onUpdate: (f: Farm) => void }) {
+export default function FarmReport({ farm, onUpdate, onOpenPlan }: { farm: Farm; onUpdate: (f: Farm) => void; onOpenPlan: () => void }) {
   const { place, zone, climate, forecastFetchedAt } = farm.data;
   const [showForecast, setShowForecast] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -272,14 +272,16 @@ export default function FarmReport({ farm, onUpdate }: { farm: Farm; onUpdate: (
         <div className="flex items-start gap-3">
           <Sprout className="mt-1 h-6 w-6 shrink-0 text-leaf-600" />
           <div>
-            <p className="text-lg font-bold">Next: what should you plant?</p>
+            <p className="text-lg font-bold">{farm.plan ? "Your season plan is ready" : "Next: what should you plant?"}</p>
             <p className="text-sm text-muted">
               Muse Wonder will compare crops for your soil, rain, land and ₦{farm.budgetNaira.toLocaleString("en-NG")} budget: seed and fertilizer
               quantities, costs, expected earnings and risks.
             </p>
           </div>
         </div>
-        <span className="rounded-full bg-white px-4 py-2 text-sm text-muted">Coming next</span>
+        <button onClick={onOpenPlan} className="flex items-center gap-2 rounded-2xl bg-leaf-600 px-5 py-3 font-semibold text-white hover:bg-leaf-700">
+          {farm.plan ? "Open my plan" : "Build my season plan"} →
+        </button>
       </section>
     </div>
   );

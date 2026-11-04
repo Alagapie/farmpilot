@@ -75,6 +75,7 @@ export interface FarmSummary {
 }
 
 export interface Farm {
+  plan?: import("./plan").PlanResult;
   id: string;
   createdAt: string;
   name: string;
