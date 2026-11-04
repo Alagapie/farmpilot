@@ -174,6 +174,10 @@ Helper scripts (most expect the dev server to be running):
 - `connect-store.ts` writes to a local JSON file. Serverless hosts have ephemeral, read-only filesystems, so swap it for a hosted database (Postgres, Redis, ...) before deploying Connect for real.
 - The WFP CSV is not committed; only the derived `seasonality.json` is.
 
+## License
+
+[MIT](LICENSE) © 2026 Abdulbasit Suleiman
+
 ## Attribution
 
 - Food price data: World Food Programme via HDX, CC BY-IGO.

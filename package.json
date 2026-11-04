@@ -8,6 +8,7 @@
     "url": "git+https://github.com/Alagapie/farmpilot.git"
   },
   "author": "Abdulbasit Suleiman",
+  "license": "MIT",
   "keywords": [
     "agriculture",
     "nextjs",
