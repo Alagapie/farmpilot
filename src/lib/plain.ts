@@ -94,7 +94,7 @@ export function plainSoil(soil: Soil): PlainSoil[] {
     const n = v.value;
     const facts = { key: "n", label: "Total nitrogen", estimate: `${fmt(n, 2)} g/kg (${fmt(n / 10, 3)}%)`, rating: lowMedHigh(n, 1, 2), range: rangeOf(v, 2, " g/kg"), confidence: conf(v) };
     if (n < 1) {
-      out.push({ ...facts, emoji: "🌱", level: "act", title: "Low in plant food (nitrogen)", meaning: "Maize and rice will grow small and yellow without fertilizer.", action: "Use NPK at planting and urea later. Beans like soybean feed the soil by themselves." });
+      out.push({ ...facts, emoji: "🌱", level: "act", title: "Low in plant food (nitrogen)", meaning: "Maize and rice will grow small and yellow without fertilizer.", action: "Use NPK at planting and urea later. Soybean can add some nitrogen when its roots nodulate well (an inoculant helps), but it won't fix the shortage on its own." });
     } else if (n < 2) {
       out.push({ ...facts, emoji: "🌱", level: "watch", title: "Some plant food (nitrogen)", meaning: "Enough to start, but hungry crops like maize will need more.", action: "Give cereals one top-up of urea when they are knee high." });
     } else {
@@ -107,7 +107,7 @@ export function plainSoil(soil: Soil): PlainSoil[] {
     const cec = v.value;
     const facts = { key: "cec", label: "Nutrient holding (CEC)", estimate: `${fmt(cec)} cmol/kg`, rating: lowMedHigh(cec, 10, 20), range: rangeOf(v, 1, " cmol/kg"), confidence: conf(v) };
     if (cec < 10) {
-      out.push({ ...facts, emoji: "💧", level: "watch", title: "Fertilizer washes away easily", meaning: "Heavy rain can carry fertilizer away before your plants use it.", action: "Split fertilizer into 2 smaller doses instead of one big one." });
+      out.push({ ...facts, emoji: "💧", level: "watch", title: "Soil holds plant food weakly", meaning: "This soil can't store much fertilizer at once, so some may be lost in heavy rain before plants use it. How much depends on drainage, which we can't see from satellite.", action: "Split fertilizer into 2 smaller doses instead of one big one." });
     } else {
       out.push({ ...facts, emoji: "💧", level: "good", title: "Your soil holds fertilizer well", meaning: "Plant food stays in the soil for your crops to use.", action: "Normal fertilizer timing is fine." });
     }

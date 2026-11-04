@@ -1,27 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, Check, ExternalLink, Loader2, RefreshCw, ShoppingCart, Sparkles, Sprout } from "lucide-react";
-import { CROPS, type CropId, type PriceKey } from "@/data/crops";
+import { AlertTriangle, ArrowRight, Check, CircleAlert, CircleCheck, CircleX, ExternalLink, Loader2, RefreshCw, ShieldCheck, ShoppingCart, Sparkles, Sprout } from "lucide-react";
+import { CROPS, type CostCategory, type CropId, type PriceKey } from "@/data/crops";
 import type { CropEconomics, LabourMode } from "@/lib/economics";
-import type { PlanResult } from "@/lib/plan";
+import type { AllocationDetail, Fit, PlanResult } from "@/lib/plan";
 import type { Price } from "@/lib/prices";
 import { shortDay } from "@/lib/plain";
 import type { Farm } from "@/lib/types";
 
 export const CROP_EMOJI: Record<CropId, string> = { maize: "🌽", rice: "🍚", soybean: "🫘", sorghum: "🌾", cassava: "🥔", tomato: "🍅" };
+const CROP_COLOR: Record<CropId, string> = { maize: "#e8a317", rice: "#3b82c4", soybean: "#9a6a3c", sorghum: "#b45309", cassava: "#7c3aed", tomato: "#dc2626" };
 
-const FIT = {
-  best: { text: "Best fit", cls: "bg-leaf-600 text-white" },
+const FIT: Record<Fit, { text: string; cls: string }> = {
+  excellent: { text: "Excellent fit", cls: "bg-leaf-600 text-white" },
   good: { text: "Good fit", cls: "bg-leaf-100 text-leaf-700" },
-  possible: { text: "Possible", cls: "bg-sun-100 text-amber-800" },
-  not_advised: { text: "Not advised", cls: "bg-red-100 text-red-700" },
-} as const;
+  conditional: { text: "Conditional fit", cls: "bg-sun-100 text-amber-800" },
+  poor: { text: "Poor fit", cls: "bg-red-100 text-red-700" },
+};
 
 const CONF = { high: "text-leaf-700", medium: "text-amber-700", low: "text-red-700" } as const;
+const RISK = { low: "text-leaf-700", medium: "text-amber-700", high: "text-red-700" } as const;
 
 const naira = (n: number) => `${n < 0 ? "−" : ""}₦${Math.abs(Math.round(n)).toLocaleString("en-NG")}`;
 const qty = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
+const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 // ---------------------------------------------------------------- setup
 
@@ -46,9 +49,11 @@ function Choice<T extends string>({ value, options, onChange }: { value: T; opti
 }
 
 const STAGES = [
-  "Checking today's seed, fertilizer and crop prices (Muse Spark + web search)",
-  "Comparing 6 crops for your soil, rain, land and budget (Muse Wonder)",
-  "Working out your shopping list and money plan",
+  "Checking today's input and crop prices (Muse Spark + web search)",
+  "Scoring 6 crops for your zone, rain, soil and water (rules)",
+  "Costing every crop from extension rates (calculation engine)",
+  "Choosing crops, land and planting windows (Muse Wonder)",
+  "Validating land, budget, arithmetic, rates and dates",
 ];
 
 function Building({ started }: { started: number }) {
@@ -58,7 +63,7 @@ function Building({ started }: { started: number }) {
     return () => clearInterval(t);
   }, []);
   const secs = Math.floor((now - started) / 1000);
-  const stage = secs < 12 ? 0 : secs < 45 ? 1 : 2;
+  const stage = secs < 8 ? 0 : secs < 10 ? 1 : secs < 12 ? 2 : secs < 50 ? 3 : 4;
   return (
     <section className="rounded-3xl border border-line bg-white p-6 sm:p-8">
       <Sparkles className="h-8 w-8 text-leaf-600" />
@@ -78,116 +83,153 @@ function Building({ started }: { started: number }) {
 
 // ---------------------------------------------------------------- plan pieces
 
-function MoneyCard({ result }: { result: PlanResult }) {
-  const { totals } = result;
-  const usedPct = Math.min((totals.cost / totals.budget) * 100, 100);
+function Checks({ result }: { result: PlanResult }) {
+  const [open, setOpen] = useState(false);
+  const fails = result.checks.filter((c) => c.status === "fail").length;
+  const warns = result.checks.filter((c) => c.status === "warn").length;
   return (
     <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
-      <h2 className="text-lg font-bold">💰 Your money plan</h2>
-      <div className="mt-4">
-        <div className="flex justify-between text-sm">
-          <span>
-            Cost: <b>{naira(totals.cost)}</b>
-          </span>
-          <span className="text-muted">Budget {naira(totals.budget)}</span>
-        </div>
-        <div className="mt-2 h-3 overflow-hidden rounded-full bg-canvas">
-          <div className={`h-full rounded-full ${totals.cost > totals.budget ? "bg-red-500" : "bg-leaf-500"}`} style={{ width: `${usedPct}%` }} />
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {totals.reserve >= 0 ? `${naira(totals.reserve)} left over for surprises` : `${naira(-totals.reserve)} over budget`}
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full flex-wrap items-center justify-between gap-2 text-left">
+        <span className="flex items-center gap-2 text-lg font-bold">
+          <ShieldCheck className={`h-5 w-5 ${fails ? "text-red-600" : "text-leaf-600"}`} /> Plan checks
+        </span>
+        <span className="text-sm">
+          <b className="text-leaf-700">{result.checks.length - fails - warns} passed</b>
+          {warns > 0 && <b className="ml-2 text-amber-700">{warns} to watch</b>}
+          {fails > 0 && <b className="ml-2 text-red-700">{fails} failed</b>}
+          <span className="ml-2 text-muted">{open ? "Hide" : "Show"}</span>
+        </span>
+      </button>
+      {open && (
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {result.checks.map((c) => (
+            <li key={c.id} className="flex gap-2 rounded-2xl bg-canvas p-3 text-sm">
+              {c.status === "pass" ? (
+                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-leaf-600" />
+              ) : c.status === "warn" ? (
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              ) : (
+                <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              )}
+              <span>
+                <b>{c.label}.</b> {c.detail}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function LandCard({ result }: { result: PlanResult }) {
+  const { land, plan } = result;
+  const segs = [
+    ...plan.allocations.map((a) => ({ key: a.crop, label: `${CROPS[a.crop].name} · ${a.hectares} ha`, ha: a.hectares, color: CROP_COLOR[a.crop] })),
+    ...(land.unallocated > 0 ? [{ key: "free", label: `Not planted · ${land.unallocated} ha`, ha: land.unallocated, color: "#d6d3c8" }] : []),
+  ];
+  return (
+    <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
+      <h2 className="text-lg font-bold">🗺️ Your land</h2>
+      <p className="text-sm text-muted">{land.total} ha in total</p>
+      <div className="mt-3 flex h-4 overflow-hidden rounded-full">
+        {segs.map((s) => (
+          <div key={s.key} style={{ width: `${(s.ha / land.total) * 100}%`, background: s.color }} title={s.label} />
+        ))}
+      </div>
+      <ul className="mt-3 space-y-1 text-sm">
+        {segs.map((s) => (
+          <li key={s.key} className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm" style={{ background: s.color }} />
+              {s.label}
+            </span>
+            <span className="text-muted">{pct(s.ha / land.total)}</span>
+          </li>
+        ))}
+      </ul>
+      {plan.unusedLandReason && land.unallocated > 0 && <p className="mt-3 rounded-2xl bg-canvas p-3 text-sm">{plan.unusedLandReason}</p>}
+    </section>
+  );
+}
+
+function BudgetCard({ result }: { result: PlanResult }) {
+  const b = result.budget;
+  const rows: [string, number, string?][] = [
+    ["Total money you have", b.total],
+    ["Emergency reserve (10%)", -b.reserve, "Kept aside for price rises, replanting or illness"],
+    ["Available for farming", b.availableForFarming],
+    ["Planned spending", -b.planned],
+    ["Left to spend", b.remainingSpendable],
+  ];
+  const usedPct = Math.min((b.planned / b.availableForFarming) * 100, 100);
+  return (
+    <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
+      <h2 className="text-lg font-bold">💰 Your budget</h2>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-canvas">
+        <div className={`h-full rounded-full ${b.planned > b.availableForFarming ? "bg-red-500" : "bg-leaf-500"}`} style={{ width: `${usedPct}%` }} />
+      </div>
+      <table className="mt-3 w-full text-sm">
+        <tbody>
+          {rows.map(([label, v, hint], i) => (
+            <tr key={label} className={i === 2 || i === 4 ? "border-t border-line font-bold" : ""}>
+              <td className="py-1.5">
+                {label}
+                {hint && <span className="block text-xs font-normal text-muted">{hint}</span>}
+              </td>
+              <td className={`py-1.5 text-right ${v < 0 ? "text-muted" : ""}`}>{naira(v)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs text-muted">If nothing goes wrong you keep the reserve too: {naira(b.remainingTotal)} unspent in total.</p>
+    </section>
+  );
+}
+
+function OutcomeCard({ result }: { result: PlanResult }) {
+  const { totals } = result;
+  return (
+    <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
+      <h2 className="text-lg font-bold">📈 What you could earn</h2>
+      <div className={`mt-3 rounded-2xl p-4 ${totals.margin.expected >= 0 ? "bg-leaf-50" : "bg-red-50"}`}>
+        <p className="text-xs text-muted">Estimated margin after listed costs</p>
+        <p className={`text-2xl font-bold ${totals.margin.expected >= 0 ? "text-leaf-700" : "text-red-700"}`}>{naira(totals.margin.expected)}</p>
+        <p className="text-xs text-muted">
+          Bad year {naira(totals.margin.low)} · good year {naira(totals.margin.high)}
         </p>
       </div>
-      <dl className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-canvas p-4">
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-2xl bg-canvas p-3">
           <dt className="text-xs text-muted">Expected sales</dt>
-          <dd className="text-xl font-bold">{naira(totals.revenue.expected)}</dd>
-          <dd className="text-xs text-muted">
-            {naira(totals.revenue.low)} – {naira(totals.revenue.high)}
-          </dd>
+          <dd className="font-bold">{naira(totals.revenue.expected)}</dd>
         </div>
-        <div className={`rounded-2xl p-4 ${totals.profit.expected >= 0 ? "bg-leaf-50" : "bg-red-50"}`}>
-          <dt className="text-xs text-muted">Expected profit</dt>
-          <dd className={`text-xl font-bold ${totals.profit.expected >= 0 ? "text-leaf-700" : "text-red-700"}`}>{naira(totals.profit.expected)}</dd>
-          <dd className="text-xs text-muted">
-            {naira(totals.profit.low)} to {naira(totals.profit.high)}
-          </dd>
+        <div className="rounded-2xl bg-canvas p-3">
+          <dt className="text-xs text-muted">Listed costs</dt>
+          <dd className="font-bold">{naira(totals.cost)}</dd>
         </div>
       </dl>
-      {totals.profit.low < 0 && (
-        <p className="mt-3 text-sm text-muted">
-          Be ready: in a bad year (poor rain and low prices) you could lose up to <b className="text-red-700">{naira(-totals.profit.low)}</b>.
+      {totals.margin.low < 0 && (
+        <p className="mt-3 text-sm">
+          Be ready: in a bad year (poor rain and low prices) you could lose up to <b className="text-red-700">{naira(-totals.margin.low)}</b>.
         </p>
       )}
       <p className="mt-3 text-xs text-muted">
-        {result.labour === "family" ? "Assumes family does most of the work (20% hired)." : result.labour === "mixed" ? "Assumes family plus some hired help (50% hired)." : "Assumes all work is hired."}{" "}
-        Family labour isn&apos;t counted as cash.
+        This is an estimate, not a guaranteed profit. It includes the costs listed in each shopping list, harvest losses, bags and transport. It does not include
+        land rent, loan interest or storage.{" "}
+        {result.labour === "family" ? "Family does most work (20% hired)." : result.labour === "mixed" ? "Family plus hired help (50% hired)." : "All work hired."} Family labour isn&apos;t
+        counted as cash.
       </p>
     </section>
   );
 }
 
-function CropPlanCard({ result, index }: { result: PlanResult; index: number }) {
-  const a = result.plan.allocations[index];
-  const e = result.economics[index];
-  const crop = CROPS[a.crop];
-  return (
-    <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-xl font-bold">
-            <span className="text-2xl">{CROP_EMOJI[a.crop]}</span> {crop.name}
-            <span className="rounded-full bg-leaf-100 px-2.5 py-0.5 text-sm font-semibold text-leaf-700">{a.hectares} ha</span>
-          </h3>
-          <p className="mt-1 text-sm text-muted">
-            Variety: <b className="text-ink">{a.variety}</b>
-          </p>
-        </div>
-        <div className="rounded-2xl bg-sky-500/10 px-4 py-2 text-sm">
-          <span className="block text-xs text-muted">Plant between</span>
-          <b>
-            {shortDay(a.plantFrom)} – {shortDay(a.plantTo)}
-          </b>
-        </div>
-      </div>
-      <p className="mt-3 text-[15px]">{a.why}</p>
+const CATEGORY_ORDER: CostCategory[] = ["Seed & planting material", "Fertilizer & soil", "Crop protection", "Water", "Land & labour", "Harvest & selling"];
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl bg-canvas p-3">
-          <p className="text-xs text-muted">Cost</p>
-          <p className="font-bold">{naira(e.totalCost)}</p>
-        </div>
-        <div className="rounded-2xl bg-canvas p-3">
-          <p className="text-xs text-muted">Expected harvest</p>
-          <p className="font-bold">
-            {e.harvest.expected} {e.harvest.unit}
-          </p>
-          <p className="text-xs text-muted">
-            {e.harvest.low}–{e.harvest.high}
-          </p>
-        </div>
-        <div className="rounded-2xl bg-canvas p-3">
-          <p className="text-xs text-muted">Expected profit</p>
-          <p className={`font-bold ${e.profit.expected >= 0 ? "text-leaf-700" : "text-red-700"}`}>{naira(e.profit.expected)}</p>
-          <p className="text-xs text-muted">
-            {naira(e.profit.low)} to {naira(e.profit.high)}
-          </p>
-        </div>
-      </div>
-
-      <h4 className="mb-2 mt-5 flex items-center gap-2 font-bold">
-        <ShoppingCart className="h-4 w-4 text-leaf-600" /> Shopping list
-      </h4>
-      <ShoppingList lines={e} />
-      <p className="mt-2 text-xs text-muted">Spacing: {crop.spacing} ({crop.plantsPerHa} plants per hectare).</p>
-    </section>
-  );
-}
-
-function ShoppingList({ lines: e }: { lines: CropEconomics }) {
+function ShoppingList({ e }: { e: CropEconomics }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-line">
-      <table className="w-full min-w-[520px] text-sm">
+      <table className="w-full min-w-[560px] text-sm">
         <thead className="bg-canvas text-left text-xs uppercase tracking-wide text-muted">
           <tr>
             <th className="px-3 py-2 font-semibold">Item</th>
@@ -197,23 +239,12 @@ function ShoppingList({ lines: e }: { lines: CropEconomics }) {
           </tr>
         </thead>
         <tbody>
-          {e.lines.map((l) => (
-            <tr key={l.item} className="border-t border-line align-top">
-              <td className="px-3 py-2">
-                <span className="font-medium">{l.label}</span>
-                <span className="block text-xs text-muted">{l.when}</span>
-              </td>
-              <td className="px-3 py-2">
-                {qty(l.quantity)} × {l.unit}
-                {/bag/.test(l.unit) && !Number.isInteger(l.quantity) && <span className="block text-xs text-muted">= {Math.round(l.quantity * 50)} kg</span>}
-              </td>
-              <td className="px-3 py-2 text-muted">{naira(l.unitPrice)}</td>
-              <td className="px-3 py-2 text-right font-semibold">{naira(l.cost)}</td>
-            </tr>
+          {CATEGORY_ORDER.filter((cat) => e.lines.some((l) => l.category === cat)).map((cat) => (
+            <CategoryRows key={cat} cat={cat} e={e} />
           ))}
           <tr className="border-t border-line bg-canvas font-bold">
             <td className="px-3 py-2" colSpan={3}>
-              Total
+              Total listed costs
             </td>
             <td className="px-3 py-2 text-right">{naira(e.totalCost)}</td>
           </tr>
@@ -223,56 +254,193 @@ function ShoppingList({ lines: e }: { lines: CropEconomics }) {
   );
 }
 
+function CategoryRows({ cat, e }: { cat: CostCategory; e: CropEconomics }) {
+  const lines = e.lines.filter((l) => l.category === cat);
+  return (
+    <>
+      <tr className="border-t border-line bg-canvas/50">
+        <td colSpan={3} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+          {cat}
+        </td>
+        <td className="px-3 py-1.5 text-right text-xs font-semibold text-muted">{naira(lines.reduce((s, l) => s + l.cost, 0))}</td>
+      </tr>
+      {lines.map((l) => (
+        <tr key={l.item} className="border-t border-line align-top">
+          <td className="px-3 py-2">
+            <span className="font-medium">{l.label}</span>
+            <span className="block text-xs text-muted">{l.when}</span>
+            {l.note && <span className="block text-xs text-amber-800">{l.note}</span>}
+          </td>
+          <td className="px-3 py-2">
+            {qty(l.quantity)} × {l.unit}
+            {/50kg bag/.test(l.unit) && !Number.isInteger(l.quantity) && <span className="block text-xs text-muted">= {Math.round(l.quantity * 50)} kg</span>}
+          </td>
+          <td className="px-3 py-2 text-muted">{naira(l.unitPrice)}</td>
+          <td className="px-3 py-2 text-right font-semibold">{naira(l.cost)}</td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function SalesMath({ e }: { e: CropEconomics }) {
+  const rows = [
+    ["Bad year", e.scenarios.low],
+    ["Expected", e.scenarios.expected],
+    ["Good year", e.scenarios.high],
+  ] as const;
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-line">
+      <table className="w-full min-w-[560px] text-sm">
+        <thead className="bg-canvas text-left text-xs uppercase tracking-wide text-muted">
+          <tr>
+            <th className="px-3 py-2 font-semibold">Case</th>
+            <th className="px-3 py-2 font-semibold">Harvest → to sell</th>
+            <th className="px-3 py-2 font-semibold">× Price</th>
+            <th className="px-3 py-2 text-right font-semibold">= Sales</th>
+            <th className="px-3 py-2 text-right font-semibold">Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, s]) => (
+            <tr key={label} className={`border-t border-line ${label === "Expected" ? "font-semibold" : ""}`}>
+              <td className="px-3 py-2">{label}</td>
+              <td className="px-3 py-2">
+                {qty(s.harvest)} → {qty(s.sellable)} <span className="text-xs text-muted">{e.unit}</span>
+              </td>
+              <td className="px-3 py-2">{naira(s.price)}</td>
+              <td className="px-3 py-2 text-right">{naira(s.revenue)}</td>
+              <td className={`px-3 py-2 text-right ${s.margin >= 0 ? "text-leaf-700" : "text-red-700"}`}>{naira(s.margin)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="border-t border-line px-3 py-2 text-xs text-muted">
+        &quot;To sell&quot; allows {pct(e.postHarvestLoss)} for losses from pests, spoilage and handling. Margin = sales − {naira(e.totalCost)} listed costs.
+      </p>
+    </div>
+  );
+}
+
+function CropPlanCard({ d }: { d: AllocationDetail }) {
+  const { allocation: a, economics: e } = d;
+  const crop = CROPS[a.crop];
+  const dates: [string, string, string][] = [
+    ...(a.nurseryStart ? [["Start nursery", shortDay(a.nurseryStart), `${crop.nurseryDays} days in the nursery`] as [string, string, string]] : []),
+    [a.nurseryStart ? "Transplant" : "Plant", `${shortDay(a.plantFrom)} – ${shortDay(a.plantTo)}`, "Estimated window"],
+    ["Harvest", `${shortDay(d.harvestFrom)} – ${shortDay(d.harvestTo)}`, `${crop.growingDays[0]}–${crop.growingDays[1]} days`],
+  ];
+  return (
+    <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
+      <h3 className="flex flex-wrap items-center gap-2 text-xl font-bold">
+        <span className="text-2xl">{CROP_EMOJI[a.crop]}</span> {crop.name}
+        <span className="rounded-full bg-leaf-100 px-2.5 py-0.5 text-sm font-semibold text-leaf-700">{a.hectares} ha</span>
+      </h3>
+      <p className="mt-1 text-sm text-muted">
+        Variety: <b className="text-ink">{a.variety}</b>
+        {crop.varieties.find((v) => v.name === a.variety) && <> · {crop.varieties.find((v) => v.name === a.variety)?.note}</>}
+      </p>
+      <p className="mt-3 text-[15px]">{a.why}</p>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {dates.map(([label, value, hint]) => (
+          <div key={label} className="rounded-2xl bg-sky-500/10 p-3">
+            <p className="text-xs text-muted">{label}</p>
+            <p className="font-bold">{value}</p>
+            <p className="text-xs text-muted">{hint}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-sm">
+        <span className="font-semibold text-sky-500">When to plant: </span>
+        {d.plantingTrigger} The dates are estimates; the rains decide.
+      </p>
+
+      <h4 className="mb-2 mt-5 flex items-center gap-2 font-bold">
+        <ShoppingCart className="h-4 w-4 text-leaf-600" /> Shopping list
+      </h4>
+      <ShoppingList e={e} />
+      <p className="mt-2 text-xs text-muted">
+        Seed: {crop.seedNote} Spacing: {crop.spacing}.
+      </p>
+      {d.seedPriceNote && <p className="mt-1 text-xs font-semibold text-amber-800">{d.seedPriceNote}</p>}
+
+      <h4 className="mb-2 mt-5 font-bold">🧮 Sales and margin</h4>
+      <SalesMath e={e} />
+    </section>
+  );
+}
+
 function Comparison({ result }: { result: PlanResult }) {
+  const ranked = [...result.options].sort((a, b) => b.riskAdjusted - a.riskAdjusted);
+  const order = new Map(ranked.map((o, i) => [o.crop, i + 1]));
   return (
     <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
       <h2 className="text-lg font-bold">⚖️ How the crops compare</h2>
-      <p className="text-sm text-muted">For one hectare on your farm, with your experience and today&apos;s prices.</p>
+      <p className="text-sm text-muted">
+        Per hectare on your farm, with your experience and today&apos;s prices. Crops stay on the land for different times, so compare margin per month too. Small plots cost a
+        little more per hectare because seed packs and bundles come whole.
+      </p>
       <ul className="mt-4 space-y-3">
         {result.plan.ranking.map((r) => {
           const o = result.options.find((x) => x.crop === r.crop);
           const chosen = result.plan.allocations.some((a) => a.crop === r.crop);
+          const c = CROPS[r.crop];
           return (
             <li key={r.crop} className={`rounded-2xl border p-4 ${chosen ? "border-leaf-500 bg-leaf-50/60" : "border-line"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="flex items-center gap-2 font-bold">
                   <span className="text-xl">{CROP_EMOJI[r.crop]}</span>
-                  {CROPS[r.crop].name}
+                  {c.name}
                   {chosen && <span className="text-xs font-semibold text-leaf-700">· in your plan</span>}
                 </p>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${FIT[r.fit].cls}`}>{FIT[r.fit].text}</span>
               </div>
               <p className="mt-1 text-sm text-muted">{r.reason}</p>
-              {CROPS[r.crop].growingDays[0] > 200 && (
-                <p className="mt-1 text-xs font-semibold text-amber-700">12-month crop: these figures cover a full year on the land, not one season.</p>
-              )}
+              {o?.suitability.condition && <p className="mt-1 text-xs font-semibold text-amber-800">Condition: {o.suitability.condition}</p>}
               {o && (
-                <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                   <span>
                     Cost/ha <b>{naira(o.perHa.totalCost)}</b>
                   </span>
                   <span>
-                    Profit/ha <b className={o.perHa.profit.expected >= 0 ? "text-leaf-700" : "text-red-700"}>{naira(o.perHa.profit.expected)}</b>{" "}
-                    <span className="text-muted">
-                      ({naira(o.perHa.profit.low)} to {naira(o.perHa.profit.high)})
-                    </span>
+                    Margin/ha <b className={o.perHa.scenarios.expected.margin >= 0 ? "text-leaf-700" : "text-red-700"}>{naira(o.perHa.scenarios.expected.margin)}</b>
                   </span>
-                </p>
+                  <span>
+                    Worst case <b className={o.perHa.scenarios.low.margin >= 0 ? "" : "text-red-700"}>{naira(o.perHa.scenarios.low.margin)}</b>
+                  </span>
+                  <span>
+                    {c.monthsOnLand} months · <b>{naira(o.perHa.marginPerMonth)}</b>/month
+                  </span>
+                  <span>
+                    Production risk <b className={RISK[c.risk.production]}>{c.risk.production}</b>
+                  </span>
+                  <span>
+                    Market risk <b className={RISK[c.risk.market]}>{c.risk.market}</b>
+                  </span>
+                  <span>
+                    Money needed <b className={RISK[c.risk.capital]}>{c.risk.capital}</b>
+                  </span>
+                  <span>
+                    Risk-adjusted rank <b>#{order.get(r.crop)}</b>
+                  </span>
+                </div>
               )}
             </li>
           );
         })}
       </ul>
+      <p className="mt-3 text-xs text-muted">Risk-adjusted rank weighs expected margin against the worst-case loss and production, market and money risk.</p>
     </section>
   );
 }
 
 function PricesUsed({ result, onReplan, busy }: { result: PlanResult; onReplan: (overrides: Partial<Record<PriceKey, number>>) => void; busy: boolean }) {
   const [edits, setEdits] = useState<Partial<Record<PriceKey, string>>>({});
-  const relevant = new Set<PriceKey>(["ploughing", "labour_day"]);
-  for (const e of result.economics) {
-    for (const l of e.lines) relevant.add(l.item);
-    relevant.add(`crop_${e.crop}` as PriceKey);
+  const relevant = new Set<PriceKey>();
+  for (const d of result.details) {
+    for (const l of d.economics.lines) relevant.add(l.item);
+    relevant.add(`crop_${d.allocation.crop}` as PriceKey);
   }
   const rows = result.prices.prices.filter((p) => relevant.has(p.key));
   const changed = Object.entries(edits).filter(([, v]) => v && Number(v) > 0);
@@ -282,15 +450,15 @@ function PricesUsed({ result, onReplan, busy }: { result: PlanResult; onReplan: 
       <h2 className="text-lg font-bold">🏷️ Prices used</h2>
       <p className="text-sm text-muted">
         Found by Muse Spark web search for {result.prices.state} on {new Date(result.prices.fetchedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}.
-        Prices change fast. If your market is different, type your price and re-plan.
+        Crop prices should be what a buyer pays you at the farm gate. If your market is different, type your price and re-plan.
       </p>
       <div className="mt-4 overflow-x-auto rounded-2xl border border-line">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-3 py-2 font-semibold">Item</th>
               <th className="px-3 py-2 font-semibold">Price used</th>
-              <th className="px-3 py-2 font-semibold">Source</th>
+              <th className="px-3 py-2 font-semibold">Priced product · source</th>
               <th className="px-3 py-2 font-semibold">Your price (₦)</th>
             </tr>
           </thead>
@@ -308,14 +476,16 @@ function PricesUsed({ result, onReplan, busy }: { result: PlanResult; onReplan: 
                   ) : (
                     <span className="block text-xs text-muted">
                       {naira(p.low)}–{naira(p.high)} · <span className={`font-semibold ${CONF[p.confidence]}`}>{p.confidence} confidence</span>
+                      <span className="block">{p.priceType} price</span>
                     </span>
                   )}
                 </td>
-                <td className="max-w-[220px] px-3 py-2 text-xs">
+                <td className="max-w-[260px] px-3 py-2 text-xs">
+                  {p.matchedProduct && <span className="block font-medium text-ink">{p.matchedProduct}</span>}
                   {p.sourceUrl ? (
                     <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 text-leaf-700 hover:underline">
                       <ExternalLink className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span className="line-clamp-2">{p.sourceTitle || new URL(p.sourceUrl).hostname}</span>
+                      <span className="line-clamp-2">{p.sourceTitle || p.sourceUrl}</span>
                     </a>
                   ) : (
                     <span className="text-muted">No source</span>
@@ -349,13 +519,16 @@ function PricesUsed({ result, onReplan, busy }: { result: PlanResult; onReplan: 
 
 // ---------------------------------------------------------------- main
 
+/** Plans saved before the validator existed lack its fields; they must be rebuilt. */
+const isCurrentPlan = (p: Farm["plan"]): p is PlanResult => !!p && Array.isArray((p as PlanResult).details) && Array.isArray((p as PlanResult).checks);
+
 export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (f: Farm) => void }) {
-  const [irrigation, setIrrigation] = useState<"no" | "yes">(farm.plan?.irrigation ? "yes" : "no");
-  const [labour, setLabour] = useState<LabourMode>(farm.plan?.labour ?? "mixed");
+  const result = isCurrentPlan(farm.plan) ? farm.plan : undefined;
+  const [irrigation, setIrrigation] = useState<"no" | "yes">(result?.irrigation ? "yes" : "no");
+  const [labour, setLabour] = useState<LabourMode>(result?.labour ?? "mixed");
   const [started, setStarted] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
-  const result = farm.plan;
 
   async function build(overrides: Partial<Record<PriceKey, number>> = {}) {
     setStarted(Date.now());
@@ -363,8 +536,7 @@ export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (
     try {
       // Keep any prices the farmer typed before, and add the new ones.
       const kept = Object.fromEntries((result?.prices.prices ?? []).filter((p) => p.edited).map((p) => [p.key, p.typical]));
-      const { plan: _old, ...farmOnly } = farm;
-      void _old;
+      const farmOnly: Farm = { ...farm, plan: undefined };
       const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -446,11 +618,13 @@ export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (
           {plan.allocations.map((a) => (
             <span key={a.crop} className="rounded-2xl bg-white/10 px-4 py-2">
               <span className="mr-1 text-lg">{CROP_EMOJI[a.crop]}</span>
-              <b>{CROPS[a.crop].name}</b> · {a.hectares} ha · plant {shortDay(a.plantFrom)}
+              <b>{CROPS[a.crop].name}</b> · {a.hectares} ha · {a.nurseryStart ? `nursery ${shortDay(a.nurseryStart)}` : `plant ${shortDay(a.plantFrom)}`}
             </span>
           ))}
         </div>
       </section>
+
+      <Checks result={result} />
 
       {result.warnings.map((w) => (
         <p key={w} className="flex items-start gap-2 rounded-2xl bg-sun-100 px-4 py-3 text-sm">
@@ -460,12 +634,35 @@ export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="min-w-0 space-y-4 lg:col-span-2">
-          {plan.allocations.map((a, i) => (
-            <CropPlanCard key={a.crop} result={result} index={i} />
+          {result.details.map((d) => (
+            <CropPlanCard key={d.allocation.crop} d={d} />
           ))}
         </div>
         <div className="min-w-0 space-y-4">
-          <MoneyCard result={result} />
+          <OutcomeCard result={result} />
+          <BudgetCard result={result} />
+          <LandCard result={result} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="min-w-0 rounded-3xl border border-line bg-white p-5 sm:p-6 lg:col-span-2">
+          <h2 className="text-lg font-bold">⚠️ Risks and what to do</h2>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            {plan.risks.map((r) => (
+              <li key={r.risk} className="rounded-2xl border border-line p-4">
+                <p className="font-semibold">{r.risk}</p>
+                {r.action && (
+                  <p className="mt-1 text-sm">
+                    <span className="font-semibold text-leaf-700">Do this: </span>
+                    {r.action}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <div className="min-w-0 space-y-4">
           <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
             <h2 className="text-lg font-bold">📝 Before you plant</h2>
             <ol className="mt-3 space-y-2 text-[15px]">
@@ -476,27 +673,20 @@ export default function SeasonPlan({ farm, onUpdate }: { farm: Farm; onUpdate: (
                 </li>
               ))}
             </ol>
-            <p className="mt-4 rounded-2xl bg-canvas p-3 text-sm text-muted">{plan.budgetNote}</p>
+          </section>
+          <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
+            <h2 className="text-lg font-bold">🔄 What would change this plan</h2>
+            <ul className="mt-3 space-y-2 text-[15px]">
+              {plan.whatWouldChange.map((s) => (
+                <li key={s} className="flex gap-2">
+                  <span>•</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
           </section>
         </div>
       </div>
-
-      <section className="rounded-3xl border border-line bg-white p-5 sm:p-6">
-        <h2 className="text-lg font-bold">⚠️ Risks and what to do</h2>
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-          {plan.risks.map((r) => (
-            <li key={r.risk} className="rounded-2xl border border-line p-4">
-              <p className="font-semibold">{r.risk}</p>
-              {r.action && (
-                <p className="mt-1 text-sm">
-                  <span className="font-semibold text-leaf-700">Do this: </span>
-                  {r.action}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
 
       <Comparison result={result} />
       <PricesUsed result={result} onReplan={build} busy={!!started} />
