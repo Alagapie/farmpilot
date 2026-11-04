@@ -45,3 +45,4 @@ next-env.d.ts
 
 # raw downloads (only derived data is committed)
 /data/*.csv
+/.next-build/
