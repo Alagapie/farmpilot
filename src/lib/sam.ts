@@ -76,16 +76,21 @@ function largestRing(path: string, max = 200): [number, number][] {
   return ring.filter((_, i) => i % step === 0);
 }
 
-export interface FieldResult {
+export interface Field {
+  id: string;
   hectares: number;
   polygon: [number, number][]; // [lat, lon]
-  otherFields: [number, number][][]; // neighbouring fields SAM also found
-  clickedInside: boolean; // false when we fell back to the nearest field
   confidence: number | null;
-  image: string; // data URL of the satellite window SAM saw
 }
 
-export async function segmentField(lat: number, lon: number): Promise<FieldResult> {
+export interface FieldResult {
+  fields: Field[]; // every crop field SAM found in view
+  pickedId: string; // the field under (or nearest to) the farmer's click
+  clickedInside: boolean; // false when we fell back to the nearest field
+  image?: string; // data URL of the satellite window SAM saw (debug only)
+}
+
+export async function segmentField(lat: number, lon: number, debug = false): Promise<FieldResult> {
   const click = toPixel(lat, lon);
   const ox = Math.round(click.x) - VIEW / 2;
   const oy = Math.round(click.y) - VIEW / 2;
@@ -109,40 +114,36 @@ export async function segmentField(lat: number, lon: number): Promise<FieldResul
   });
 
   const result = await parseImageStream(stream as AsyncIterable<never>).finalResult;
-  const fields = recordsOfKind(result.records, "mask").map((record) => ({
+  const metresPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** ZOOM;
+  const masks = recordsOfKind(result.records, "mask").map((record) => ({
     record,
     raster: decodeMaskToRaster(record.mask),
   }));
-  if (!fields.length) throw new Error("SAM could not find any fields here. Try zooming to your farm and clicking again.");
+  if (!masks.length) throw new Error("SAM could not find any fields here. Try zooming to your farm and clicking again.");
 
   const c = VIEW / 2;
-  const contains = ({ record: { bounds, mask }, raster }: (typeof fields)[number]) =>
+  const contains = ({ record: { bounds, mask }, raster }: (typeof masks)[number]) =>
     c >= bounds.left && c < bounds.right && c >= bounds.top && c < bounds.bottom &&
     raster[(c - bounds.top) * mask.width + (c - bounds.left)] === 1;
-  const distance = ({ record: { bounds } }: (typeof fields)[number]) =>
+  const distance = ({ record: { bounds } }: (typeof masks)[number]) =>
     Math.hypot((bounds.left + bounds.right) / 2 - c, (bounds.top + bounds.bottom) / 2 - c);
-  const picked = fields.find(contains) ?? fields.reduce((a, b) => (distance(b) < distance(a) ? b : a));
-  const mask = picked.record;
+  const picked = masks.find(contains) ?? masks.reduce((a, b) => (distance(b) < distance(a) ? b : a));
 
-  const pixels = picked.raster.reduce((sum, v) => sum + v, 0);
-  const metresPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** ZOOM;
-  const hectares = (pixels * metresPerPixel ** 2) / 10_000;
-
-  const polygon = largestRing(decodeMaskToSVGPath(mask.mask)).map(([x, y]) =>
-    toLatLon(ox + mask.bounds.left + x, oy + mask.bounds.top + y),
-  );
-
-  const toGeo = (record: (typeof fields)[number]["record"]) =>
-    largestRing(decodeMaskToSVGPath(record.mask), 60).map(([x, y]) =>
+  // Ids include the location so plots picked from different clicks never collide.
+  const idPrefix = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  const fields = masks.map(({ record, raster }) => ({
+    id: `${idPrefix}#${record.objectId}`,
+    hectares: Math.round((raster.reduce((sum, v) => sum + v, 0) * metresPerPixel ** 2) / 100) / 100,
+    polygon: largestRing(decodeMaskToSVGPath(record.mask), record === picked.record ? 200 : 80).map(([x, y]) =>
       toLatLon(ox + record.bounds.left + x, oy + record.bounds.top + y),
-    );
+    ),
+    confidence: record.confidence ?? null,
+  }));
 
   return {
-    hectares: Math.round(hectares * 100) / 100,
-    polygon,
-    otherFields: fields.filter((f) => f !== picked).map((f) => toGeo(f.record)),
+    fields,
+    pickedId: `${idPrefix}#${picked.record.objectId}`,
     clickedInside: contains(picked),
-    confidence: mask.confidence ?? null,
-    image: `data:image/jpeg;base64,${jpeg.toString("base64")}`,
+    image: debug ? `data:image/jpeg;base64,${jpeg.toString("base64")}` : undefined,
   };
 }

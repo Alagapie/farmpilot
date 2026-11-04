@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --color-canvas: #f6f4ee;
+  --color-ink: #1d2a21;
+  --color-muted: #5f6b62;
+  --color-line: #e3dfd3;
+  --color-leaf-50: #eef7ef;
+  --color-leaf-100: #d6eed8;
+  --color-leaf-500: #2f9e44;
+  --color-leaf-600: #23803a;
+  --color-leaf-700: #1b6530;
+  --color-leaf-900: #10331b;
+  --color-sun-100: #fff1d0;
+  --color-sun-500: #e8a317;
+  --color-soil-500: #9a6a3c;
+  --color-sky-500: #3b82c4;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/* Leaflet controls sit above our map overlays but below modals. */
+.leaflet-container {
+  font-family: inherit;
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.scan-line {
+  animation: scan 1.6s linear infinite;
 }
