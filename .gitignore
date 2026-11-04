@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local caches (price sheets)
 /.cache
+
+# raw downloads (only derived data is committed)
+/data/*.csv

@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ClipboardList, Home, MessageCircle, RotateCcw, Sun } from "lucide-react";
+import { CalendarDays, ClipboardList, Home, MessageCircle, RotateCcw, Sun, TrendingUp } from "lucide-react";
 import Advisor from "./Advisor";
 import AskFarmPilot, { type ChatMessage } from "./AskFarmPilot";
 import FarmReport from "./FarmReport";
+import MarketPulse from "./MarketPulse";
 import SeasonCalendar from "./SeasonCalendar";
 import SeasonPlan, { isCurrentPlan } from "./SeasonPlan";
 import type { Farm } from "@/lib/types";
 
-type Tab = "farm" | "plan" | "calendar" | "today" | "ask";
+type Tab = "farm" | "plan" | "calendar" | "today" | "market" | "ask";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode; needsPlan?: boolean }[] = [
   { id: "farm", label: "My farm", icon: <Home className="h-4 w-4" /> },
   { id: "plan", label: "Season plan", icon: <ClipboardList className="h-4 w-4" /> },
   { id: "calendar", label: "Calendar", icon: <CalendarDays className="h-4 w-4" />, needsPlan: true },
   { id: "today", label: "Today", icon: <Sun className="h-4 w-4" />, needsPlan: true },
+  { id: "market", label: "Market", icon: <TrendingUp className="h-4 w-4" />, needsPlan: true },
   { id: "ask", label: "Ask FarmPilot", icon: <MessageCircle className="h-4 w-4" /> },
 ];
 
@@ -69,6 +71,7 @@ export default function Dashboard({ farm, onReset, onUpdate }: { farm: Farm; onR
         {tab === "plan" && <SeasonPlan farm={farm} onUpdate={onUpdate} />}
         {tab === "calendar" && plan && <SeasonCalendar farm={farm} plan={plan} />}
         {tab === "today" && plan && <Advisor farm={farm} plan={plan} />}
+        {tab === "market" && plan && <MarketPulse farm={farm} plan={plan} />}
         {tab === "ask" && <AskFarmPilot farm={farm} messages={chat} setMessages={setChat} />}
       </main>
     </div>

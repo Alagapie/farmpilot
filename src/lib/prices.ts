@@ -61,6 +61,7 @@ const GROUPS: PriceItem[][] = [
     { key: "petrol", label: "Petrol (PMS) at the pump", unit: "1 litre", want: "retail" },
     { key: "manure", label: "Poultry or cow manure", unit: "50kg bag", want: "dealer" },
     { key: "empty_bag", label: "Empty 100kg polypropylene grain bag", unit: "1 bag", want: "dealer" },
+    { key: "hermetic_bag", label: "Hermetic grain storage bag (PICS or similar), 100kg size", unit: "1 bag", want: "dealer" },
     { key: "basket", label: "Tomato basket or plastic crate (about 50kg)", unit: "1 basket", want: "dealer" },
     { key: "transport_bag", label: "Transport of produce from village to the nearest market", unit: "100kg bag", want: "service" },
   ],

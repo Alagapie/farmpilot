@@ -25,6 +25,7 @@ export type PriceKey =
   | "labour_day"
   | "petrol"
   | "empty_bag"
+  | "hermetic_bag"
   | "basket"
   | "transport_bag"
   | "crop_maize"
