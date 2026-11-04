@@ -55,7 +55,7 @@ export interface Farm {
   lat: number;
   lon: number;
   hectares: number;
-  hectaresSource: "sam" | "manual";
+  hectaresSource: "sam" | "walk" | "manual";
   polygon: [number, number][];
   budgetNaira: number;
   experience: "new" | "some" | "experienced";

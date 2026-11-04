@@ -28,6 +28,47 @@ body {
   font-family: inherit;
 }
 
+/* Map markers and labels */
+.you-dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #3b82f6;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+  animation: pulse 1.8s ease-out infinite;
+}
+.corner-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #38bdf8;
+  border: 2px solid #fff;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+  100% { box-shadow: 0 0 0 18px rgba(59, 130, 246, 0); }
+}
+.leaflet-tooltip.field-label {
+  border: none;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #1d2a21;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.leaflet-tooltip.field-label-on {
+  background: #16a34a;
+  color: #fff;
+  font-size: 13px;
+}
+.leaflet-tooltip.field-label-on::before {
+  display: none;
+}
+
 @keyframes scan {
   0% { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
