@@ -43,7 +43,7 @@ export interface Vehicle {
 export const VEHICLES: Vehicle[] = [
   { id: "v-pickup", owner: "Sani Haulage (demo)", kind: "Pickup van, 1.2 t", capacityKg: 1200, perKm: 650, minCharge: 15000, baseLat: 11.2, baseLon: 7.6, refrigerated: false, rating: 4.6 },
   { id: "v-5t", owner: "Kabir Logistics (demo)", kind: "5-tonne truck", capacityKg: 5000, perKm: 950, minCharge: 40000, baseLat: 11.11, baseLon: 7.72, refrigerated: false, rating: 4.8 },
-  { id: "v-10t", owner: "Arewa Movers (demo)", kind: "10-tonne truck", capacityKg: 10000, perKm: 1350, minCharge: 70000, baseLat: 10.52, baseLon: 7.44, refrigerated: false, rating: 4.4 },
+  { id: "v-10t", owner: "Arewa Movers (demo)", kind: "10-tonne truck", capacityKg: 10000, perKm: 1350, minCharge: 70000, baseLat: 11.08, baseLon: 7.7, refrigerated: false, rating: 4.4 },
   { id: "v-cold", owner: "FreshLine Cold Van (demo)", kind: "Refrigerated van, 2 t", capacityKg: 2000, perKm: 1100, minCharge: 35000, baseLat: 11.11, baseLon: 7.72, refrigerated: true, rating: 4.7 },
 ];
 
@@ -105,7 +105,7 @@ export interface Equipment {
 export const EQUIPMENT: Equipment[] = [
   { id: "e-pump-1", owner: "Garba (demo)", kind: "irrigation pump", name: "3-inch petrol pump + hoses", lat: 11.2, lon: 7.57, rate: 2500, per: "hour", note: "Fuel not included" },
   { id: "e-pump-2", owner: "Shika Youth Co-op (demo)", kind: "irrigation pump", name: "Solar pump kit", lat: 11.18, lon: 7.6, rate: 1500, per: "hour", note: "No fuel needed; daytime only" },
-  { id: "e-tractor-1", owner: "Hello Farms Zaria (demo)", kind: "tractor", name: "75hp tractor with disc plough + harrow", lat: 11.12, lon: 7.7, rate: 62000, per: "hectare", note: "Minimum 1 acre" },
+  { id: "e-tractor-1", owner: "Zaria Tractor Hire (demo)", kind: "tractor", name: "75hp tractor with disc plough + harrow", lat: 11.12, lon: 7.7, rate: 62000, per: "hectare", note: "Minimum 1 acre" },
   { id: "e-thresher-1", owner: "Danladi (demo)", kind: "thresher", name: "Multi-crop thresher", lat: 11.21, lon: 7.55, rate: 18000, per: "day", note: "Maize, sorghum, soybean" },
   { id: "e-sprayer-1", owner: "Agro-Dealer Giwa (demo)", kind: "sprayer", name: "16L knapsack sprayer + mask & gloves", lat: 11.27, lon: 7.43, rate: 1500, per: "day", note: "Protective kit included" },
 ];
