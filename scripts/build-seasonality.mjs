@@ -16,14 +16,15 @@ if (!file) throw new Error("Pass the path to wfp_food_prices_nga.csv");
 
 const NORTH = new Set(["Adamawa", "Bauchi", "Borno", "Gombe", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Niger", "Plateau", "Sokoto", "Taraba", "Yobe", "Zamfara", "Kwara", "Nasarawa", "Benue", "Kogi", "Federal Capital Territory", "FCT"]);
 
-// FarmPilot crop → WFP commodity names (first match wins per row).
+// FarmPilot crop → WFP commodity names (first match wins per row). Processed or
+// imported products (maize flour, imported rice) follow other price drivers.
 const CROPS = {
-  maize: /^maize/i,
+  maize: /^maize(?! flour)/i,
   sorghum: /^sorghum/i,
-  rice: /^rice/i,
+  rice: /^rice \((local|milled)/i,
   soybean: /soy/i,
   cassava: /^(gari|cassava)/i,
-  tomato: /tomato/i,
+  tomato: /^tomato/i,
 };
 
 function parseCsv(text) {
@@ -62,7 +63,7 @@ const col = (name) => {
   if (i < 0) throw new Error(`Column "${name}" not found. Columns: ${header.join(", ")}`);
   return i;
 };
-const [cDate, cAdmin1, cMarket, cCommodity, cUnit, cPriceType, cPrice] = ["date", "admin1", "market", "commodity", "unit", "pricetype", "price"].map(col);
+const [cDate, cAdmin1, cMarket, cCommodity, cUnit, cPriceType, cPrice, cFlag] = ["date", "admin1", "market", "commodity", "unit", "pricetype", "price", "priceflag"].map(col);
 
 // series[region][crop][market|commodity|unit|type] = Map(yyyy-mm → price)
 const series = { north: {}, south: {} };
@@ -71,7 +72,8 @@ let maxDate = "0000";
 for (const r of rows.slice(1)) {
   if (!r[cDate] || r[cDate].startsWith("#")) continue; // HXL tag row
   const price = Number(r[cPrice]);
-  if (!(price > 0)) continue;
+  // Only observed market prices; WFP's "aggregate" rows are derived averages.
+  if (!(price > 0) || r[cFlag] !== "actual") continue;
   const crop = Object.keys(CROPS).find((k) => CROPS[k].test(r[cCommodity]));
   if (!crop) continue;
   const region = NORTH.has(r[cAdmin1]) ? "north" : "south";
