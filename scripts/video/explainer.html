@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>How FarmPilot works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #0b2414;
+    --panel: #10331b;
+    --line: rgba(214, 238, 216, 0.16);
+    --text: #f3f7f1;
+    --muted: #a9c2ae;
+    --leaf: #4ade80;
+    --sun: #f5b82e;
+    --sky: #60a5fa;
+    --meta: #7aa7ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: "Plus Jakarta Sans", system-ui, sans-serif; }
+  #stage { position: relative; width: 1920px; height: 1080px; background: radial-gradient(1200px 700px at 50% 40%, #12391f 0%, var(--bg) 70%); }
+  svg#wires { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .col-title { position: absolute; top: 118px; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 700; opacity: 0; }
+  .node { position: absolute; width: 360px; min-height: 70px; padding: 14px 18px; border-radius: 18px; background: var(--panel); border: 1.5px solid var(--line); display: flex; gap: 14px; align-items: center; opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+  .node .ic { font-size: 30px; width: 40px; text-align: center; flex: none; }
+  .node b { display: block; font-size: 21px; font-weight: 700; }
+  .node span { display: block; font-size: 15px; color: var(--muted); margin-top: 2px; }
+  .node.meta { border-color: rgba(122, 167, 255, 0.55); background: linear-gradient(135deg, #12305a 0%, #10331b 130%); }
+  .node.meta b { color: #cfe0ff; }
+  .node.engine { border-color: rgba(245, 184, 46, 0.5); background: linear-gradient(135deg, #3a2c08 0%, #10331b 120%); }
+  .node.engine b { color: #ffe3a3; }
+  .node.out { border-color: rgba(74, 222, 128, 0.5); background: linear-gradient(135deg, #0f4a25 0%, #10331b 120%); }
+  .node.lit { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.2), 0 0 50px rgba(74,222,128,0.35); }
+  .wire { fill: none; stroke: rgba(214, 238, 216, 0.18); stroke-width: 2.2; }
+  .wire.lit { stroke: var(--leaf); stroke-width: 3.5; }
+  .pulse { fill: #fff; filter: drop-shadow(0 0 8px #4ade80); }
+  #title, #end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #title h1, #end h1 { font-size: 92px; font-weight: 800; letter-spacing: -0.02em; }
+  #title p, #end p { font-size: 34px; color: var(--muted); margin-top: 18px; }
+  .sprout { width: 120px; height: 120px; border-radius: 32px; background: #23803a; display: grid; place-items: center; font-size: 64px; margin-bottom: 34px; box-shadow: 0 20px 60px rgba(35,128,58,0.45); }
+  #header { position: absolute; top: 40px; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 800; opacity: 0; }
+  #header small { display: block; font-size: 19px; color: var(--muted); font-weight: 600; margin-top: 4px; letter-spacing: 0.04em; }
+  #caption { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); padding: 18px 34px; border-radius: 999px; background: rgba(0,0,0,0.45); border: 1px solid var(--line); font-size: 30px; font-weight: 700; white-space: nowrap; opacity: 0; }
+  #caption em { font-style: normal; color: var(--leaf); }
+  #principle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; background: rgba(11,36,20,0.86); }
+  #principle div { text-align: center; }
+  #principle h2 { font-size: 72px; font-weight: 800; line-height: 1.15; }
+  #principle h2 .a { color: #cfe0ff; }
+  #principle h2 .b { color: #ffe3a3; }
+  #principle p { font-size: 30px; color: var(--muted); margin-top: 26px; }
+  #end { opacity: 0; background: var(--bg); }
+  #end .meta-row { display: flex; gap: 18px; margin-top: 48px; }
+  #end .meta-row span { padding: 12px 22px; border-radius: 999px; border: 1.5px solid rgba(122,167,255,0.55); color: #cfe0ff; font-size: 24px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="wires"></svg>
+  <div id="header">How the pieces work together<small>FARMPILOT ARCHITECTURE</small></div>
+  <div class="col-title" style="left:100px">What we know</div>
+  <div class="col-title" style="left:560px">Meta models</div>
+  <div class="col-title" style="left:1020px">FarmPilot engines</div>
+  <div class="col-title" style="left:1480px">What the farmer gets</div>
+  <div id="nodes"></div>
+  <div id="caption"></div>
+  <div id="principle"><div><h2><span class="a">AI decides and explains.</span><br /><span class="b">Code computes every naira.</span></h2><p>Every plan is validated before the farmer sees it.</p></div></div>
+  <div id="title"><div class="sprout">🌱</div><h1>How FarmPilot works</h1><p>Five Meta models. One farming co-pilot.</p></div>
+  <div id="end"><div class="sprout">🌱</div><h1>FarmPilot</h1><p>Know what to do, and get it done, together.</p>
+    <div class="meta-row"><span>SAM 3.1</span><span>Muse Spark</span><span>Muse Wonder</span><span>Muse Voice Transcribe</span><span>Muse Image</span></div></div>
+</div>
+<script>
+gsap.registerPlugin(MotionPathPlugin);
+// Keep real-time pacing even if a frame renders slowly.
+gsap.ticker.lagSmoothing(0);
+
+const COLS = [100, 560, 1020, 1480];
+const NODES = [
+  // What we know
+  ["gps", 0, "", "📍", "GPS location", "Where the farmer stands"],
+  ["sat", 0, "", "🛰️", "Satellite imagery", "Esri World Imagery"],
+  ["photo", 0, "", "📷", "Farmer's photos", "A crate of produce"],
+  ["voice", 0, "", "🎤", "Farmer's voice", "Questions and listings"],
+  ["soil", 0, "", "🧪", "Soil map", "ISRIC SoilGrids, with uncertainty"],
+  ["nasa", 0, "", "🌦️", "25 years of climate", "NASA POWER"],
+  ["fc", 0, "", "📡", "16-day forecast", "Open-Meteo"],
+  ["wfp", 0, "", "📊", "24 years of market prices", "World Food Programme"],
+  ["web", 0, "", "🌐", "The live web", "Today's prices and news"],
+  // Meta models
+  ["sam", 1, "meta", "✂️", "SAM 3.1", "Sees fields and produce"],
+  ["vt", 1, "meta", "🗣️", "Muse Voice Transcribe", "Hears the farmer"],
+  ["spark", 1, "meta", "⚡", "Muse Spark", "Explains, chats, searches"],
+  ["wonder", 1, "meta", "🧠", "Muse Wonder", "Decides the season"],
+  ["img", 1, "meta", "🎨", "Muse Image", "Paints the poster"],
+  // Engines
+  ["calc", 2, "engine", "🧮", "Calculation engine", "Every quantity and naira"],
+  ["valid", 2, "engine", "🛡️", "Plan validator", "Land, budget, maths, dates"],
+  ["rules", 2, "engine", "⛅", "Weather rules", "Each task × the forecast"],
+  ["season", 2, "engine", "📈", "Seasonal prices", "Inflation removed"],
+  ["pool", 2, "engine", "🚚", "Pooling engine", "Trucks, storage, equipment"],
+  // Outcomes
+  ["map", 3, "out", "🗺️", "Farm mapped", "0.8 ha, confirmed"],
+  ["plan", 3, "out", "📋", "Season plan", "Crops, dates, shopping list"],
+  ["today", 3, "out", "☀️", "Daily alerts", "Wait to plant · delay urea"],
+  ["ask", 3, "out", "💬", "Answers by voice", "From the farm's own data"],
+  ["market", 3, "out", "💰", "When to sell", "Store or sell now"],
+  ["connect", 3, "out", "🤝", "Shared truck", "Transport 46% cheaper"],
+  ["poster", 3, "out", "🖼️", "Season poster", "Share on WhatsApp"],
+];
+const EDGES = [
+  ["gps", "sam"], ["sat", "sam"], ["photo", "sam"], ["voice", "vt"], ["vt", "spark"], ["web", "spark"],
+  ["soil", "wonder"], ["nasa", "wonder"], ["spark", "wonder"], ["fc", "rules"], ["wfp", "season"],
+  ["sam", "calc"], ["sam", "pool"], ["spark", "pool"], ["wonder", "calc"], ["wonder", "img"],
+  ["calc", "valid"], ["spark", "rules"], ["calc", "ask"],
+  ["sam", "map"], ["valid", "plan"], ["rules", "today"], ["spark", "ask"], ["season", "market"], ["spark", "market"], ["pool", "connect"], ["img", "poster"],
+];
+const FLOWS = [
+  { label: "<em>Map the farm:</em> GPS + satellite → SAM 3.1 outlines every field", nodes: ["gps", "sat", "sam", "calc", "map"], edges: [["gps", "sam"], ["sat", "sam"], ["sam", "calc"], ["sam", "map"]] },
+  { label: "<em>Plan the season:</em> soil + climate + live prices → Muse Wonder → validated plan", nodes: ["soil", "nasa", "web", "spark", "wonder", "calc", "valid", "plan"], edges: [["soil", "wonder"], ["nasa", "wonder"], ["web", "spark"], ["spark", "wonder"], ["wonder", "calc"], ["calc", "valid"], ["valid", "plan"]] },
+  { label: "<em>Guide every day:</em> forecast × tasks → weather rules → Muse Spark briefing", nodes: ["fc", "rules", "spark", "today"], edges: [["fc", "rules"], ["spark", "rules"], ["rules", "today"]] },
+  { label: "<em>Ask by voice:</em> Voice Transcribe → Muse Spark with tools → answer", nodes: ["voice", "vt", "spark", "calc", "ask"], edges: [["voice", "vt"], ["vt", "spark"], ["spark", "ask"], ["calc", "ask"]] },
+  { label: "<em>Know when to sell:</em> 24 years of WFP prices + today's news", nodes: ["wfp", "web", "season", "spark", "market"], edges: [["wfp", "season"], ["season", "market"], ["web", "spark"], ["spark", "market"]] },
+  { label: "<em>Sell together:</em> spoken listing + photo grade → pooling engine → shared truck", nodes: ["voice", "photo", "vt", "spark", "sam", "pool", "connect"], edges: [["voice", "vt"], ["vt", "spark"], ["photo", "sam"], ["sam", "pool"], ["spark", "pool"], ["pool", "connect"]] },
+  { label: "<em>Share the plan:</em> Muse Image paints the season poster", nodes: ["wonder", "img", "poster"], edges: [["wonder", "img"], ["img", "poster"]] },
+];
+
+// Lay out each column's nodes evenly under its title.
+const nodesEl = document.getElementById("nodes");
+const byCol = [0, 1, 2, 3].map((c) => NODES.filter((n) => n[1] === c));
+const TOP = 168, BOTTOM = 1000;
+for (const col of byCol) {
+  const gap = (BOTTOM - TOP) / col.length;
+  col.forEach(([id, c, cls, ic, title, sub], i) => {
+    const el = document.createElement("div");
+    el.className = `node ${cls}`;
+    el.id = `n-${id}`;
+    el.style.left = `${COLS[c]}px`;
+    el.style.top = `${TOP + i * gap + (gap - 78) / 2}px`;
+    el.innerHTML = `<div class="ic">${ic}</div><div><b>${title}</b><span>${sub}</span></div>`;
+    nodesEl.appendChild(el);
+  });
+}
+
+const svg = document.getElementById("wires");
+const NS = "http://www.w3.org/2000/svg";
+const edgeKey = (a, b) => `${a}>${b}`;
+const wires = {};
+for (const [a, b] of EDGES) {
+  const A = document.getElementById(`n-${a}`).getBoundingClientRect();
+  const B = document.getElementById(`n-${b}`).getBoundingClientRect();
+  const x1 = A.right, y1 = A.top + A.height / 2, x2 = B.left, y2 = B.top + B.height / 2;
+  const same = Math.abs(x1 - x2) < 40 || A.left === B.left;
+  const path = document.createElementNS(NS, "path");
+  // Same-column links curve out to the right; others are smooth S-curves.
+  const d = same
+    ? `M ${A.right} ${y1} C ${A.right + 70} ${y1}, ${B.right + 70} ${y2}, ${B.right} ${y2}`
+    : `M ${x1} ${y1} C ${x1 + (x2 - x1) * 0.5} ${y1}, ${x1 + (x2 - x1) * 0.5} ${y2}, ${x2} ${y2}`;
+  path.setAttribute("d", d);
+  path.setAttribute("class", "wire");
+  path.id = `w-${a}-${b}`;
+  const len = path.getTotalLength ? 0 : 0;
+  svg.appendChild(path);
+  const L = path.getTotalLength();
+  path.style.strokeDasharray = L;
+  path.style.strokeDashoffset = L;
+  wires[edgeKey(a, b)] = path;
+}
+
+function pulse(path, tl, at, dur = 1.1) {
+  const dot = document.createElementNS(NS, "circle");
+  dot.setAttribute("r", 7);
+  dot.setAttribute("class", "pulse");
+  dot.style.opacity = 0;
+  svg.appendChild(dot);
+  tl.set(dot, { opacity: 1 }, at);
+  tl.to(dot, { duration: dur, ease: "power1.inOut", motionPath: { path, align: path, alignOrigin: [0.5, 0.5] } }, at);
+  tl.to(dot, { opacity: 0, duration: 0.2 }, at + dur - 0.1);
+}
+
+const caption = document.getElementById("caption");
+const tl = gsap.timeline({ onComplete: () => (window.__done = true) });
+
+// 1. Title
+tl.from("#title .sprout", { scale: 0.4, opacity: 0, duration: 0.9, ease: "back.out(1.8)" }, 0.3)
+  .from("#title h1", { y: 40, opacity: 0, duration: 0.8, ease: "power3.out" }, 0.6)
+  .from("#title p", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, 0.9)
+  .to("#title", { opacity: 0, duration: 0.7 }, 4.6)
+  .to("#header", { opacity: 1, duration: 0.6 }, 5.0);
+
+// 2. Build the four columns
+let t = 5.4;
+[0, 1, 2, 3].forEach((c) => {
+  tl.to(document.querySelectorAll(".col-title")[c], { opacity: 1, duration: 0.5 }, t);
+  byCol[c].forEach(([id], i) => {
+    tl.fromTo(`#n-${id}`, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, t + 0.25 + i * 0.16);
+  });
+  t += 0.6 + byCol[c].length * 0.16 + 0.9;
+});
+// Draw every wire, then let pulses run once through the whole system.
+EDGES.forEach(([a, b], i) => tl.to(wires[edgeKey(a, b)], { strokeDashoffset: 0, duration: 0.8, ease: "power1.inOut" }, t + i * 0.05));
+t += 0.8 + EDGES.length * 0.05 + 0.2;
+EDGES.forEach(([a, b], i) => pulse(wires[edgeKey(a, b)], tl, t + (i % 9) * 0.12));
+t += 2.4;
+
+// 3. Walk through each feature's path
+for (const f of FLOWS) {
+  const lit = f.nodes.map((n) => `#n-${n}`);
+  const litWires = f.edges.map(([a, b]) => wires[edgeKey(a, b)]);
+  tl.to(".node", { opacity: 0.22, duration: 0.4 }, t)
+    .to(".wire", { opacity: 0.25, duration: 0.4 }, t)
+    .to(lit, { opacity: 1, duration: 0.4 }, t)
+    .call(() => {
+      document.querySelectorAll(".node.lit, .wire.lit").forEach((e) => e.classList.remove("lit"));
+      lit.forEach((s) => document.querySelector(s).classList.add("lit"));
+      litWires.forEach((w) => { w.classList.add("lit"); w.style.opacity = 1; });
+      caption.innerHTML = f.label;
+    }, null, t)
+    .fromTo(caption, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, t + 0.1);
+  // Pulses travel the path in order, column by column.
+  f.edges.forEach(([a, b], i) => {
+    const colA = NODES.find((n) => n[0] === a)[1];
+    pulse(wires[edgeKey(a, b)], tl, t + 0.5 + colA * 0.9 + (i % 2) * 0.15, 0.9);
+    pulse(wires[edgeKey(a, b)], tl, t + 1.9 + colA * 0.9 + (i % 2) * 0.15, 0.9);
+  });
+  t += 5.2;
+}
+tl.call(() => document.querySelectorAll(".node.lit, .wire.lit").forEach((e) => e.classList.remove("lit")), null, t)
+  .to(".node, .wire", { opacity: 1, duration: 0.5 }, t)
+  .to(caption, { opacity: 0, duration: 0.3 }, t);
+t += 0.8;
+
+// 4. Principle, then the end card
+tl.to("#principle", { opacity: 1, duration: 0.7 }, t)
+  .from("#principle h2", { y: 40, duration: 0.8, ease: "power3.out" }, t)
+  .from("#principle p", { opacity: 0, y: 20, duration: 0.7 }, t + 0.8);
+t += 5;
+tl.to("#end", { opacity: 1, duration: 0.8 }, t)
+  .from("#end .sprout", { scale: 0.5, duration: 0.8, ease: "back.out(1.8)" }, t + 0.2)
+  .from("#end .meta-row span", { opacity: 0, y: 20, stagger: 0.12, duration: 0.5 }, t + 0.8);
+t += 4.8;
+tl.to({}, { duration: 0.1 }, t);
+
+// Expose the timeline length so the recorder knows when to stop.
+window.__duration = tl.duration();
+tl.pause();
+window.__play = () => tl.play(0);
+</script>
+</body>
+</html>
