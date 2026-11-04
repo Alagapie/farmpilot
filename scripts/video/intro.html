@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FarmPilot intro</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b2414; color: #f3f7f1; font-family: "Plus Jakarta Sans", system-ui, sans-serif; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: radial-gradient(1100px 700px at 50% 45%, #14421f 0%, #0b2414 72%); }
+  /* Soft field rows sweeping across the background */
+  .row { position: absolute; left: -10%; width: 120%; height: 90px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.07), transparent); }
+  #glow { position: absolute; left: 50%; top: 40%; width: 700px; height: 700px; margin: -350px 0 0 -350px; border-radius: 50%; background: radial-gradient(circle, rgba(74, 222, 128, 0.28), transparent 65%); opacity: 0; }
+  #center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #logo { width: 170px; height: 170px; border-radius: 44px; background: linear-gradient(145deg, #2f9e44, #1b6530); display: grid; place-items: center; font-size: 96px; box-shadow: 0 30px 80px rgba(35, 128, 58, 0.5); }
+  #name { margin-top: 38px; font-size: 128px; font-weight: 800; letter-spacing: -0.03em; display: flex; }
+  #name span { display: inline-block; }
+  #tag { margin-top: 14px; font-size: 40px; font-weight: 500; color: #bfe3c6; }
+  #pills { margin-top: 46px; display: flex; gap: 18px; }
+  .pill { padding: 14px 26px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); border: 1.5px solid rgba(214, 238, 216, 0.22); font-size: 27px; font-weight: 700; }
+  .pill b { color: #4ade80; margin-right: 10px; }
+  #meta { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; font-size: 24px; color: #a9c2ae; letter-spacing: 0.02em; }
+  #meta strong { color: #cfe0ff; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="row" style="top: 120px"></div>
+  <div class="row" style="top: 300px"></div>
+  <div class="row" style="top: 480px"></div>
+  <div class="row" style="top: 660px"></div>
+  <div class="row" style="top: 840px"></div>
+  <div id="glow"></div>
+  <div id="center">
+    <div id="logo">🌱</div>
+    <div id="name"></div>
+    <div id="tag">Your AI farming co-pilot for Nigerian farmers</div>
+    <div id="pills">
+      <div class="pill"><b>🛰️</b>Map the farm</div>
+      <div class="pill"><b>🧠</b>Plan the season</div>
+      <div class="pill"><b>☀️</b>Daily advice</div>
+      <div class="pill"><b>🤝</b>Sell together</div>
+    </div>
+  </div>
+  <div id="meta">Powered by <strong>Meta SAM 3.1 · Muse Spark · Muse Wonder · Muse Voice Transcribe · Muse Image</strong></div>
+</div>
+<script>
+const name = document.getElementById("name");
+for (const ch of "FarmPilot") {
+  const s = document.createElement("span");
+  s.textContent = ch;
+  name.appendChild(s);
+}
+
+const tl = gsap.timeline();
+// Background rows drift slowly the whole time.
+document.querySelectorAll(".row").forEach((r, i) => tl.fromTo(r, { x: i % 2 ? 160 : -160 }, { x: i % 2 ? -160 : 160, duration: 10, ease: "none" }, 0));
+
+tl.to("#glow", { opacity: 1, duration: 1.2, ease: "power2.out" }, 0.2)
+  .from("#logo", { scale: 0, rotation: -25, duration: 1.0, ease: "back.out(1.9)" }, 0.3)
+  .from("#name span", { y: 70, opacity: 0, duration: 0.55, stagger: 0.06, ease: "power3.out" }, 1.0)
+  .from("#tag", { y: 24, opacity: 0, duration: 0.7, ease: "power2.out" }, 1.9)
+  .from(".pill", { y: 26, opacity: 0, scale: 0.9, duration: 0.5, stagger: 0.22, ease: "back.out(1.6)" }, 2.8)
+  .from("#meta", { opacity: 0, y: 16, duration: 0.8 }, 4.2)
+  // A gentle pulse on the logo while it holds.
+  .to("#logo", { scale: 1.05, duration: 0.8, yoyo: true, repeat: 3, ease: "sine.inOut" }, 5.0)
+  // Fade out at the end so it cuts cleanly into the demo.
+  .to("#stage", { opacity: 0, duration: 0.7, ease: "power1.in" }, 9.3)
+  .to({}, { duration: 0.01 }, 9.99);
+
+window.__duration = 10;
+tl.pause();
+window.__play = () => {
+  tl.play(0);
+};
+</script>
+</body>
+</html>

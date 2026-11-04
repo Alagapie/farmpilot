@@ -1,15 +1,16 @@
 // Render explainer.html to MP4 frame by frame: pause the GSAP timeline, step it
 // to each frame's exact time and screenshot. Smooth 30fps regardless of how
 // fast this machine can render live.
-// Usage: node scripts/video/render-explainer.mjs <ffmpeg.exe> <out.mp4> <workDir> [fps]
+// Usage: node scripts/video/render-explainer.mjs <ffmpeg.exe> <out.mp4> <workDir> [fps] [page.html]
+// (page defaults to explainer.html; intro.html uses the same renderer)
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium } from "playwright-core";
 
-const [ffmpeg, out, work, fpsArg = "30"] = process.argv.slice(2);
+const [ffmpeg, out, work, fpsArg = "30", pageName = "explainer.html"] = process.argv.slice(2);
 const fps = Number(fpsArg);
-const html = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "explainer.html")).href;
+const html = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), pageName)).href;
 
 const browser = await chromium.launch({ channel: "msedge" });
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
