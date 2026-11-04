@@ -48,6 +48,11 @@ export interface FarmData {
   forecast: ForecastDay[];
 }
 
+export interface FarmSummary {
+  headline: string;
+  points: { kind: "good" | "warning" | "tip" | "weather"; text: string }[];
+}
+
 export interface Farm {
   id: string;
   createdAt: string;
@@ -62,4 +67,5 @@ export interface Farm {
   goal: "sell" | "food" | "both";
   interests: string[];
   data: FarmData;
+  summary?: FarmSummary;
 }

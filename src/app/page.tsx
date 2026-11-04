@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Dashboard from "@/components/Dashboard";
 import Onboarding from "@/components/Onboarding";
 import { clearFarm, loadFarm, saveFarm } from "@/lib/storage";
@@ -13,6 +13,11 @@ export default function Home() {
   useEffect(() => {
     setFarm(loadFarm());
     setReady(true);
+  }, []);
+
+  const update = useCallback((f: Farm) => {
+    saveFarm(f);
+    setFarm(f);
   }, []);
 
   if (!ready) return null;
@@ -31,6 +36,7 @@ export default function Home() {
   return (
     <Dashboard
       farm={farm}
+      onUpdate={update}
       onReset={() => {
         clearFarm();
         setFarm(null);

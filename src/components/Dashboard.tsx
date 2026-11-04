@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 import FarmReport from "./FarmReport";
 import type { Farm } from "@/lib/types";
 
-export default function Dashboard({ farm, onReset }: { farm: Farm; onReset: () => void }) {
+export default function Dashboard({ farm, onReset, onUpdate }: { farm: Farm; onReset: () => void; onUpdate: (f: Farm) => void }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-line bg-canvas/90 backdrop-blur">
@@ -27,7 +27,7 @@ export default function Dashboard({ farm, onReset }: { farm: Farm; onReset: () =
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <FarmReport farm={farm} />
+        <FarmReport farm={farm} onUpdate={onUpdate} />
       </main>
     </div>
   );

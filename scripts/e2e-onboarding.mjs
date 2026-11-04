@@ -38,7 +38,8 @@ await page.getByText("Is the green field your farm?").waitFor({ timeout: 90_000 
 await page.getByRole("button", { name: /Yes, this is my farm/ }).click();
 await page.getByPlaceholder("e.g. Musa's farm").fill("Musa's farm");
 await page.getByRole("button", { name: /Analyse my farm/ }).click();
-await page.getByText("Soil health").waitFor({ timeout: 90_000 });
+await page.getByText("Your soil", { exact: true }).waitFor({ timeout: 90_000 });
+await page.getByText("Reading your farm and writing").waitFor({ state: "detached", timeout: 90_000 });
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${out}/4-report.png`, fullPage: true });
 
