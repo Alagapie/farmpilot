@@ -235,7 +235,7 @@ async function clipC() {
   await d.chapter("08", "Sell together: share a truck", "Muse Spark + SAM 3.1");
   await d.pause(3500);
   await d.click(page.getByTitle("Say it"));
-  await d.pause(4300);
+  await d.pause(3900);
   await d.click(page.getByTitle("Stop"));
   await waitFast(d, () => page.getByText(/Filled in from what you said/).waitFor({ timeout: 90_000 }));
   await d.pause(3000);
